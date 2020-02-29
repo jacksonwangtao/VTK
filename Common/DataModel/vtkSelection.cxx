@@ -15,7 +15,6 @@
 #include "vtkSelection.h"
 
 #include "vtkAbstractArray.h"
-#include "vtkAtomicTypes.h"
 #include "vtkFieldData.h"
 #include "vtkInformation.h"
 #include "vtkInformationIntegerKey.h"
@@ -33,6 +32,7 @@
 #include <vtksys/RegularExpression.hxx>
 #include <vtksys/SystemTools.hxx>
 
+#include <atomic>
 #include <cassert>
 #include <cctype>
 #include <iterator>
@@ -44,14 +44,14 @@
 
 namespace
 {
-  // since certain compilers don't support std::to_string yet
-  template <typename T>
-  std::string convert_to_string(const T& val)
-  {
-    std::ostringstream str;
-    str << val;
-    return str.str();
-  }
+// since certain compilers don't support std::to_string yet
+template <typename T>
+std::string convert_to_string(const T& val)
+{
+  std::ostringstream str;
+  str << val;
+  return str.str();
+}
 }
 
 //============================================================================
@@ -167,11 +167,11 @@ class vtkSelection::vtkInternals
   bool ApplyBack(
     std::vector<char>& op_stack, std::vector<std::shared_ptr<parser::Node> >& var_stack) const
   {
-    assert(op_stack.size() > 0);
+    assert(!op_stack.empty());
 
     if (op_stack.back() == '!')
     {
-      if (var_stack.size() < 1)
+      if (var_stack.empty())
       {
         // failed
         return false;
@@ -256,7 +256,7 @@ public:
         case '|':
         case '&':
         case '!':
-          if (accumated_text.size())
+          if (!accumated_text.empty())
           {
             parts.push_back(accumated_text);
             accumated_text.clear();
@@ -272,7 +272,7 @@ public:
           break;
       }
     }
-    if (accumated_text.size())
+    if (!accumated_text.empty())
     {
       parts.push_back(accumated_text);
     }
@@ -288,11 +288,10 @@ public:
       else if (term[0] == ')')
       {
         // apply operators till we encounter the opening paren.
-        while (
-          op_stack.size() > 0 && op_stack.back() != '(' && this->ApplyBack(op_stack, var_stack))
+        while (!op_stack.empty() && op_stack.back() != '(' && this->ApplyBack(op_stack, var_stack))
         {
         }
-        if (op_stack.size() == 0)
+        if (op_stack.empty())
         {
           // missing opening paren???
           return nullptr;
@@ -303,7 +302,7 @@ public:
       }
       else if (term[0] == '&' || term[0] == '|' || term[0] == '!')
       {
-        while (op_stack.size() > 0 && (precedence(term[0]) < precedence(op_stack.back())) &&
+        while (!op_stack.empty() && (precedence(term[0]) < precedence(op_stack.back())) &&
           this->ApplyBack(op_stack, var_stack))
         {
         }
@@ -403,7 +402,7 @@ std::string vtkSelection::AddNode(vtkSelectionNode* node)
     }
   }
 
-  static vtkAtomicUInt64 counter = 0;
+  static std::atomic<uint64_t> counter(0U);
   std::string name = std::string("node") + convert_to_string(++counter);
   while (internals.Items.find(name) != internals.Items.end())
   {
@@ -488,7 +487,7 @@ void vtkSelection::RemoveNode(vtkSelectionNode* node)
 void vtkSelection::RemoveAllNodes()
 {
   vtkInternals& internals = (*this->Internals);
-  if (internals.Items.size())
+  if (!internals.Items.empty())
   {
     internals.Items.clear();
     this->Modified();
@@ -567,8 +566,7 @@ void vtkSelection::Union(vtkSelectionNode* node)
   }
   if (!merged)
   {
-    vtkSmartPointer<vtkSelectionNode> clone =
-      vtkSmartPointer<vtkSelectionNode>::New();
+    vtkSmartPointer<vtkSelectionNode> clone = vtkSmartPointer<vtkSelectionNode>::New();
     clone->DeepCopy(node);
     this->AddNode(clone);
   }
@@ -577,7 +575,7 @@ void vtkSelection::Union(vtkSelectionNode* node)
 //----------------------------------------------------------------------------
 void vtkSelection::Subtract(vtkSelection* s)
 {
-  for(unsigned int n=0; n<s->GetNumberOfNodes(); ++n)
+  for (unsigned int n = 0; n < s->GetNumberOfNodes(); ++n)
   {
     this->Subtract(s->GetNode(n));
   }
@@ -587,17 +585,17 @@ void vtkSelection::Subtract(vtkSelection* s)
 void vtkSelection::Subtract(vtkSelectionNode* node)
 {
   bool subtracted = false;
-  for( unsigned int tn = 0; tn<this->GetNumberOfNodes(); ++tn)
+  for (unsigned int tn = 0; tn < this->GetNumberOfNodes(); ++tn)
   {
     vtkSelectionNode* tnode = this->GetNode(tn);
 
-    if(tnode->EqualProperties(node))
+    if (tnode->EqualProperties(node))
     {
       tnode->SubtractSelectionList(node);
       subtracted = true;
     }
   }
-  if( !subtracted )
+  if (!subtracted)
   {
     vtkErrorMacro("Could not subtract selections");
   }
@@ -618,7 +616,7 @@ vtkMTimeType vtkSelection::GetMTime()
 //----------------------------------------------------------------------------
 vtkSelection* vtkSelection::GetData(vtkInformation* info)
 {
-  return info? vtkSelection::SafeDownCast(info->Get(DATA_OBJECT())) : nullptr;
+  return info ? vtkSelection::SafeDownCast(info->Get(DATA_OBJECT())) : nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -675,7 +673,7 @@ vtkSmartPointer<vtkSignedCharArray> vtkSelection::Evaluate(
   }
 
   auto tree = this->Internals->BuildExpressionTree(expr, values_map);
-  if (tree && (values_map.size() > 0))
+  if (tree && (!values_map.empty()))
   {
     auto result = vtkSmartPointer<vtkSignedCharArray>::New();
     result->SetNumberOfComponents(1);

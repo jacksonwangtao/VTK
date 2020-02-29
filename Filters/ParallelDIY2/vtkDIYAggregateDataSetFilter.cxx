@@ -45,16 +45,16 @@
 #include <map>
 #include <set>
 
+// clang-format off
 #include "vtk_diy2.h" // must include this before any diy header
-VTKDIY2_PRE_INCLUDE
-#include VTK_DIY2_HEADER(diy/assigner.hpp)
-#include VTK_DIY2_HEADER(diy/link.hpp)
-#include VTK_DIY2_HEADER(diy/master.hpp)
-#include VTK_DIY2_HEADER(diy/mpi.hpp)
-#include VTK_DIY2_HEADER(diy/reduce.hpp)
-#include VTK_DIY2_HEADER(diy/partners/swap.hpp)
-#include VTK_DIY2_HEADER(diy/decomposition.hpp)
-VTKDIY2_POST_INCLUDE
+#include VTK_DIY2(diy/assigner.hpp)
+#include VTK_DIY2(diy/link.hpp)
+#include VTK_DIY2(diy/master.hpp)
+#include VTK_DIY2(diy/mpi.hpp)
+#include VTK_DIY2(diy/reduce.hpp)
+#include VTK_DIY2(diy/partners/swap.hpp)
+#include VTK_DIY2(diy/decomposition.hpp)
+// clang-format on
 
 vtkStandardNewMacro(vtkDIYAggregateDataSetFilter);
 
@@ -153,9 +153,8 @@ int vtkDIYAggregateDataSetFilter::RequestData(
   int targetProcessId = this->GetTargetProcessId(myRank, numberOfProcesses);
   if (targetProcessId != -1)
   {
-    extentTranslator->PieceToExtentThreadSafe(
-      targetProcessId, this->GetNumberOfTargetProcesses(), 0, wholeExtent, outputExtent,
-      vtkExtentTranslator::BLOCK_MODE, 0);
+    extentTranslator->PieceToExtentThreadSafe(targetProcessId, this->GetNumberOfTargetProcesses(),
+      0, wholeExtent, outputExtent, vtkExtentTranslator::BLOCK_MODE, 0);
   }
 
   if (vtkImageData* idOutput = vtkImageData::SafeDownCast(output))
@@ -189,9 +188,8 @@ int vtkDIYAggregateDataSetFilter::RequestData(
     if (targetProcessId != -1)
     {
       int targetProcessOutputExtent[6];
-      extentTranslator->PieceToExtentThreadSafe(
-        targetProcessId, this->GetNumberOfTargetProcesses(), 0, wholeExtent,
-        targetProcessOutputExtent, vtkExtentTranslator::BLOCK_MODE, 0);
+      extentTranslator->PieceToExtentThreadSafe(targetProcessId, this->GetNumberOfTargetProcesses(),
+        0, wholeExtent, targetProcessOutputExtent, vtkExtentTranslator::BLOCK_MODE, 0);
       int overlappingExtent[6];
       if (this->DoExtentsOverlap(
             inputExtent, targetProcessOutputExtent, dimensions, overlappingExtent))
@@ -388,8 +386,8 @@ int vtkDIYAggregateDataSetFilter::MoveData(int inputExtent[6], int wholeExtent[6
     processesIReceiveFrom->GetNumberOfIds());
   for (vtkIdType i = 0; i < processesIReceiveFrom->GetNumberOfIds(); i++)
   {
-    controller->NoBlockReceive(receiveSizes.data()+i, 1,
-      processesIReceiveFrom->GetId(i), 9318, sizeReceiveRequests[i]);
+    controller->NoBlockReceive(
+      receiveSizes.data() + i, 1, processesIReceiveFrom->GetId(i), 9318, sizeReceiveRequests[i]);
   }
 
   std::vector<vtkMPICommunicator::Request> sizeSendRequests(serializedDataSets.size());
@@ -401,7 +399,7 @@ int vtkDIYAggregateDataSetFilter::MoveData(int inputExtent[6], int wholeExtent[6
     counter++;
   }
 
-  controller->WaitAll(sizeReceiveRequests.size(), sizeReceiveRequests.data());
+  controller->WaitAll(static_cast<int>(sizeReceiveRequests.size()), sizeReceiveRequests.data());
   std::vector<vtkMPICommunicator::Request> dataReceiveRequests(
     processesIReceiveFrom->GetNumberOfIds());
   std::vector<unsigned char*> dataArrays;
@@ -426,15 +424,16 @@ int vtkDIYAggregateDataSetFilter::MoveData(int inputExtent[6], int wholeExtent[6
   {
     int size = static_cast<int>(it.second.size());
     sendData[counter].resize(size);
-    for (int i=0;i<size;i++)
+    for (int i = 0; i < size; i++)
     {
       sendData[counter][i] = static_cast<unsigned char>(it.second[i]);
     }
     it.second.clear(); // clear out the data
-    controller->NoBlockSend(sendData[counter].data(), size, it.first, 9319, dataSendRequests[counter]);
+    controller->NoBlockSend(
+      sendData[counter].data(), size, it.first, 9319, dataSendRequests[counter]);
     counter++;
   }
-  controller->WaitAll(dataReceiveRequests.size(), dataReceiveRequests.data());
+  controller->WaitAll(static_cast<int>(dataReceiveRequests.size()), dataReceiveRequests.data());
 
   receivedDataSets.resize(processesIReceiveFrom->GetNumberOfIds());
   for (vtkIdType i = 0; i < processesIReceiveFrom->GetNumberOfIds(); i++)
@@ -443,16 +442,16 @@ int vtkDIYAggregateDataSetFilter::MoveData(int inputExtent[6], int wholeExtent[6
     if (receivedDataSets[i].size() != static_cast<size_t>(receiveSizes[i]))
     {
       vtkErrorMacro("Problem deserializing dataset onto target process. Data from "
-        << processesIReceiveFrom->GetId(i) << " should be size "
-        << receiveSizes[i] << " but is size " << receivedDataSets[i].size());
+        << processesIReceiveFrom->GetId(i) << " should be size " << receiveSizes[i]
+        << " but is size " << receivedDataSets[i].size());
       return 0;
     }
     delete[] dataArrays[i];
   }
 
   // wait on messages to make sure that we don't interfere with any future use of this filter
-  controller->WaitAll(sizeSendRequests.size(), sizeSendRequests.data());
-  controller->WaitAll(dataSendRequests.size(), dataSendRequests.data());
+  controller->WaitAll(static_cast<int>(sizeSendRequests.size()), sizeSendRequests.data());
+  controller->WaitAll(static_cast<int>(dataSendRequests.size()), dataSendRequests.data());
 
   return 1;
 }

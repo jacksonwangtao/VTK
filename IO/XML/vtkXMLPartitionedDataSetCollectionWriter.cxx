@@ -14,70 +14,53 @@
 =========================================================================*/
 #include "vtkXMLPartitionedDataSetCollectionWriter.h"
 
-#include "vtkDataObjectTreeIterator.h"
+#include "vtkDataObjectTreeRange.h"
 #include "vtkInformation.h"
 #include "vtkMultiBlockDataSet.h"
 #include "vtkObjectFactory.h"
 #include "vtkSmartPointer.h"
 #include "vtkXMLDataElement.h"
-#include "vtkInformation.h"
 
 vtkStandardNewMacro(vtkXMLPartitionedDataSetCollectionWriter);
 //----------------------------------------------------------------------------
-vtkXMLPartitionedDataSetCollectionWriter::vtkXMLPartitionedDataSetCollectionWriter()
-{
-}
+vtkXMLPartitionedDataSetCollectionWriter::vtkXMLPartitionedDataSetCollectionWriter() {}
 
 //----------------------------------------------------------------------------
-vtkXMLPartitionedDataSetCollectionWriter::~vtkXMLPartitionedDataSetCollectionWriter()
-{
-}
+vtkXMLPartitionedDataSetCollectionWriter::~vtkXMLPartitionedDataSetCollectionWriter() {}
 
 //----------------------------------------------------------------------------
 int vtkXMLPartitionedDataSetCollectionWriter::FillInputPortInformation(
   int vtkNotUsed(port), vtkInformation* info)
 {
-  info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(),
-    "vtkPartitionedDataSetCollection");
+  info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkPartitionedDataSetCollection");
   return 1;
 }
 
 //----------------------------------------------------------------------------
-int vtkXMLPartitionedDataSetCollectionWriter::WriteComposite(vtkCompositeDataSet* compositeData,
-    vtkXMLDataElement* parent, int &writerIdx)
+int vtkXMLPartitionedDataSetCollectionWriter::WriteComposite(
+  vtkCompositeDataSet* compositeData, vtkXMLDataElement* parent, int& writerIdx)
 {
-  if (! (compositeData->IsA("vtkPartitionedDataSet") ||
-         compositeData->IsA("vtkPartitionedDataSetCollection")) )
+  if (!(compositeData->IsA("vtkPartitionedDataSet") ||
+        compositeData->IsA("vtkPartitionedDataSetCollection")))
   {
-    vtkErrorMacro("Unsupported composite dataset type: "
-                  << compositeData->GetClassName() << ".");
+    vtkErrorMacro("Unsupported composite dataset type: " << compositeData->GetClassName() << ".");
     return 0;
   }
 
+  auto* dObjTree = static_cast<vtkDataObjectTree*>(compositeData);
+
   // Write each input.
-  vtkSmartPointer<vtkDataObjectTreeIterator> iter;
-  iter.TakeReference(
-    vtkDataObjectTree::SafeDownCast(compositeData)->NewTreeIterator());
-  iter->VisitOnlyLeavesOff();
-  iter->TraverseSubTreeOff();
-  iter->SkipEmptyNodesOff();
-  int toBeWritten = 0;
-  for (iter->InitTraversal(); !iter->IsDoneWithTraversal();
-    iter->GoToNextItem())
-  {
-    toBeWritten++;
-  }
+  using Opts = vtk::DataObjectTreeOptions;
+  const auto dObjRange = vtk::Range(dObjTree, Opts::None);
+  int toBeWritten = static_cast<int>(dObjRange.size());
 
   float progressRange[2] = { 0.f, 0.f };
   this->GetProgressRange(progressRange);
 
   int index = 0;
   int RetVal = 0;
-  for (iter->InitTraversal(); !iter->IsDoneWithTraversal();
-    iter->GoToNextItem(), index++)
+  for (vtkDataObject* curDO : dObjRange)
   {
-    vtkDataObject* curDO = iter->GetCurrentDataObject();
-
     if (curDO && curDO->IsA("vtkCompositeDataSet"))
     // if node is a supported composite dataset
     // note in structure file and recurse.
@@ -85,8 +68,7 @@ int vtkXMLPartitionedDataSetCollectionWriter::WriteComposite(vtkCompositeDataSet
       vtkXMLDataElement* tag = vtkXMLDataElement::New();
       tag->SetName("Partitions");
       tag->SetIntAttribute("index", index);
-      vtkCompositeDataSet* curCD
-        = vtkCompositeDataSet::SafeDownCast(curDO);
+      vtkCompositeDataSet* curCD = vtkCompositeDataSet::SafeDownCast(curDO);
       if (!this->WriteComposite(curCD, tag, writerIdx))
       {
         tag->Delete();
@@ -105,18 +87,19 @@ int vtkXMLPartitionedDataSetCollectionWriter::WriteComposite(vtkCompositeDataSet
       vtkStdString fileName = this->CreatePieceFileName(writerIdx);
 
       this->SetProgressRange(progressRange, writerIdx, toBeWritten);
-      if (this->WriteNonCompositeData( curDO, datasetXML, writerIdx,
-                                       fileName.c_str()))
+      if (this->WriteNonCompositeData(curDO, datasetXML, writerIdx, fileName.c_str()))
       {
         parent->AddNestedElement(datasetXML);
         RetVal = 1;
       }
       datasetXML->Delete();
     }
+
+    index++;
   }
+
   return RetVal;
 }
-
 
 //----------------------------------------------------------------------------
 void vtkXMLPartitionedDataSetCollectionWriter::PrintSelf(ostream& os, vtkIndent indent)

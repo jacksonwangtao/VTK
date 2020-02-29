@@ -1,5 +1,6 @@
 vtk_add_test_cxx(vtkFiltersCoreCxxTests tests
   TestAppendArcLength.cxx,NO_VALID
+  TestAppendDataSets.cxx,NO_VALID
   TestAppendFilter.cxx,NO_VALID
   TestAppendMolecule.cxx,NO_VALID
   TestAppendPolyData.cxx,NO_VALID
@@ -9,9 +10,11 @@ vtk_add_test_cxx(vtkFiltersCoreCxxTests tests
   TestBinCellDataFilter.cxx,NO_VALID
   TestCategoricalPointDataToCellData.cxx,NO_VALID
   TestCategoricalResampleWithDataSet.cxx,NO_VALID
+  TestCellCenters.cxx,NO_VALID
   TestCellDataToPointData.cxx,NO_VALID
   TestCenterOfMass.cxx,NO_VALID
   TestCleanPolyData.cxx,NO_VALID
+  TestCleanPolyData2.cxx,NO_VALID
   TestClipPolyData.cxx,NO_VALID
   TestConnectivityFilter.cxx,NO_VALID
   TestCutter.cxx,NO_VALID
@@ -22,16 +25,21 @@ vtk_add_test_cxx(vtkFiltersCoreCxxTests tests
   TestDelaunay2DFindTriangle.cxx,NO_VALID
   TestDelaunay2DMeshes.cxx,NO_VALID
   TestDelaunay3D.cxx,NO_VALID
+  TestExplicitStructuredGridCrop.cxx
+  TestExplicitStructuredGridToUnstructuredGrid.cxx
   TestExecutionTimer.cxx,NO_VALID
   TestFeatureEdges.cxx,NO_VALID
   TestFlyingEdges.cxx
   TestGlyph3D.cxx
   TestHedgeHog.cxx,NO_VALID
+  TestImageDataToExplicitStructuredGrid.cxx
   TestImplicitPolyDataDistance.cxx
+  TestImplicitProjectOnPlaneDistance.cxx
   TestMaskPoints.cxx,NO_VALID
   TestNamedComponents.cxx,NO_VALID
   TestPointDataToCellData.cxx,NO_VALID
   TestPolyDataConnectivityFilter.cxx,NO_VALID
+  TestPolyDataTangents.cxx
   TestProbeFilter.cxx,NO_VALID
   TestProbeFilterImageInput.cxx
   TestProbeFilterOutputAttributes.cxx,NO_VALID
@@ -40,6 +48,7 @@ vtk_add_test_cxx(vtkFiltersCoreCxxTests tests
   TestResampleWithDataSet.cxx,
   TestResampleWithDataSet2.cxx
   TestResampleWithDataSet3.cxx
+  TestRemoveDuplicatePolys.cxx,NO_VALID
   TestSmoothPolyDataFilter.cxx,NO_VALID
   TestSMPPipelineContour.cxx,NO_VALID
   TestStripper.cxx,NO_VALID
@@ -50,6 +59,7 @@ vtk_add_test_cxx(vtkFiltersCoreCxxTests tests
   TestTriangleMeshPointNormals.cxx
   TestTubeFilter.cxx
   TestUnstructuredGridQuadricDecimation.cxx,NO_VALID
+  TestUnstructuredGridToExplicitStructuredGrid.cxx
   UnitTestMaskPoints.cxx,NO_VALID
   UnitTestMergeFilter.cxx,NO_VALID
   )
